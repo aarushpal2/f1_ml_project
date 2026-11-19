@@ -6,6 +6,9 @@ COMPOUNDS = {"SOFT", "MEDIUM", "HARD"}
 
 def build_laps(laps: pd.DataFrame, stints: pd.DataFrame) -> pd.DataFrame:
     """Attach compound and tyre age to every lap by joining laps to stints."""
+    if laps.empty or stints.empty:
+        return pd.DataFrame()
+
     stints = stints.copy()
     last_lap = int(laps["lap_number"].max())
     stints["lap_end"] = stints["lap_end"].fillna(last_lap)
@@ -20,14 +23,16 @@ def build_laps(laps: pd.DataFrame, stints: pd.DataFrame) -> pd.DataFrame:
     df["tyre_age"] = df["tyre_age_at_start"].fillna(0) + (df["lap_number"] - df["lap_start"])
     df["is_in_lap"] = (df["lap_number"] == df["lap_end"]) & ~df["is_last_stint"]
     df["laps_remaining"] = last_lap - df["lap_number"]   # fuel-load proxy
-    df["compound"] = df["compound"].str.upper()
+    df["compound"] = df["compound"].astype(str).str.upper()
     return df
 
 
 def filter_laps(df: pd.DataFrame) -> pd.DataFrame:
     """Drop laps that don't reflect clean tyre-limited pace."""
+    if df.empty:
+        return df
     df = df[df["lap_duration"].notna()]
-    df = df[~df["is_pit_out_lap"].fillna(False)]
+    df = df[~df["is_pit_out_lap"].fillna(False).astype(bool)]
     df = df[~df["is_in_lap"]]
     df = df[df["lap_number"] > 1]
     df = df[df["compound"].isin(COMPOUNDS)]
